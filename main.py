@@ -20,15 +20,11 @@ class GUI(ctk.CTk):
 
         # browse & select video file
         browse_button= ctk.CTkButton(inner_frame, text="Browse video file", command=self.browse_file)
-        browse_button.grid(row=0, column= 0 , padx=5, pady= 10)
+        browse_button.grid(row=0, column= 0 , padx=10, pady= 10, sticky="w",)
 
-        self.selected_file = ctk.CTkEntry(inner_frame)
+        self.selected_file = ctk.CTkEntry(inner_frame, width = 150)
         self.selected_file.configure(state="disabled")
-        self.selected_file.grid(row=0, column = 1 )
-
-        # start button
-        self.start_button = ctk.CTkButton(inner_frame, text="Start", command=self.start_button_thread)
-        self.start_button.place(relx = 0.5, rely = 0.8,  anchor="center")
+        self.selected_file.grid(row=0, column = 1, sticky = 'w' )
 
         # progress bar
         self.progress_bar = ctk.CTkProgressBar(inner_frame, determinate_speed=20)
@@ -44,14 +40,38 @@ class GUI(ctk.CTk):
         self.word_timestamp_checkbox.select()
         self.word_timestamp_checkbox.grid(row= 2, column= 0, sticky= "w", padx= 10, pady = 2)
 
-        # segment level
-        self.segment_timestamp_checkbox = ctk.CTkCheckBox(inner_frame, text="Segment timestamp")
+        # segment level checkbox
+        self.segment_timestamp_checkbox = ctk.CTkCheckBox(inner_frame, text="Segment timestamp", command=self.segment_timestamp_options)
         self.segment_timestamp_checkbox.select()
         self.segment_timestamp_checkbox.grid(row= 3, column= 0, sticky= "w", padx= 10, pady = 2)
 
-        # error messages if transcription fail
+        # max words per line
+        self.max_words_label = ctk.CTkLabel(inner_frame, text= "Max words per segment \n (0 = automatic)", padx = 10)
+        self.max_words_label.grid(row= 4, column = 0)
+
+        slider_val = ctk.IntVar()
+        self.max_words_per_seg_slider = ctk.CTkSlider(inner_frame, from_= 0, to = 20, width= 150,
+                                                       variable= slider_val)
+        self.max_words_per_seg_slider.grid(row= 5, column= 0, sticky= "w", padx= 10)
+        # display slider val
+        self.max_word_slider_val = ctk.CTkLabel(inner_frame, textvariable= slider_val)
+        self.max_word_slider_val.grid(row=5,column=1, sticky='w')
+
+        # error messages if transcriptions fail
         self.error_msg = ctk.CTkLabel(inner_frame, text_color= "red", text="")
         self.error_msg.place(relx = 0.5, rely = 0.7,  anchor="center")
+
+        # start button
+        self.start_button = ctk.CTkButton(inner_frame, text="Start", command=self.start_button_thread)
+        self.start_button.place(relx = 0.5, rely = 0.8,  anchor="center")
+
+    # enable slider if segment_timestamp checkbox is on
+    def segment_timestamp_options(self):
+        if self.segment_timestamp_checkbox.get() == 1:
+            self.max_words_per_seg_slider.configure(state= "normal")
+        else:
+            self.max_words_per_seg_slider.set(0)
+            self.max_words_per_seg_slider.configure(state="disabled")
 
 
     def browse_file(self):
@@ -91,7 +111,8 @@ class GUI(ctk.CTk):
         self.progress_bar.set(0.25)
 
         #transcribe via Whisper
-        transcription_result = self.transcriber.transcribe(isolate=self.clean_audio_checkbox.get())
+        transcription_result = self.transcriber.transcribe(isolate=self.clean_audio_checkbox.get(),
+                                                           max_words = self.max_words_per_seg_slider.get())
 
         if not transcription_result:
             self.error_msg.configure(text="No transcription detected. Aborting.")
@@ -152,8 +173,13 @@ class Transcriber:
     def transcribe(self, **kwargs):
         result = self.model.transcribe_stable(self.file_path,
                                               vad= True if kwargs.get("isolate") == 1 else False,
-                                              denoiser="demucs" if kwargs.get("isolate") == 1 else None
+                                              denoiser="demucs" if kwargs.get("isolate") == 1 else None,
+                                              regroup= False if kwargs.get('max_words') != 0 else True
                                               )
+        if kwargs.get('max_words', 0) != 0:
+            result.split_by_length(max_words=kwargs.get('max_words'))
+
+
 
     # if no transcription, no point continuing
         if not result.has_words:
