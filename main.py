@@ -6,8 +6,7 @@ import uuid
 from faster_whisper import WhisperModel
 from os.path import join
 import pysubs2
-
-
+import threading
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -16,6 +15,7 @@ class GUI(ctk.CTk):
         self.geometry("350x400")
         self.title("AutoSubber")
         self.resizable(False, False)
+        self.progress_steps = 4
 
         inner_frame = ctk.CTkFrame(self)
         inner_frame.place(relx = 0.5, rely = 0.5, relwidth = 0.95, relheight=0.95,  anchor="center")
@@ -30,11 +30,11 @@ class GUI(ctk.CTk):
         self.selected_file.grid(row=0, column = 1)
 
         # start button
-        self.start_button = ctk.CTkButton(inner_frame, text="Start", command=self.start_button_function)
+        self.start_button = ctk.CTkButton(inner_frame, text="Start", command=self.start_button_thread)
         self.start_button.place(relx = 0.5, rely = 0.8,  anchor="center")
 
         # progress bar
-        self.progress_bar = ctk.CTkProgressBar(inner_frame, determinate_speed=10)
+        self.progress_bar = ctk.CTkProgressBar(inner_frame, determinate_speed=20)
         self.progress_bar.set(0)
         self.progress_bar.place(relx = 0.5, rely = 0.9,  anchor="center")
 
@@ -61,6 +61,7 @@ class GUI(ctk.CTk):
             self.selected_file.configure(state="disabled")
 
     def start_button_function(self):
+        self.progress_bar.set(0)
         self.error_msg.configure(text="")
         if self.selected_file.get() == "":
             self.error_msg.configure(text="Select a video before starting.")
@@ -74,7 +75,7 @@ class GUI(ctk.CTk):
             self.error_msg.configure(text="Cannot extract audio file. Ensure there's audio.")
             self.start_button.configure(state="normal")
             return
-        self.progress_bar.step()
+        self.progress_bar.set(0.25)
 
         #transcribe via Whisper
         if self.clean_audio_checkbox.get() == 1:
@@ -86,17 +87,29 @@ class GUI(ctk.CTk):
             self.error_msg.configure(text="No transcription detected. Aborting.")
             self.start_button.configure(state="normal")
             return
-        self.progress_bar.step()
+        self.progress_bar.set(0.5)
 
         # put transcription into an ass file
         self.transcriber.generate_subtitles(transcription_result[0], transcription_result[1])
-        self.progress_bar.step()
+        self.progress_bar.set(0.75)
 
         # generate video with subtitles
         self.transcriber.subtitle_to_video((os.path.splitext(self.selected_file.get())),self.transcriber.sub_path)
-        self.progress_bar.step()
+        self.progress_bar.set(1)
 
         self.start_button.configure(state="normal")
+        print("done")
+
+
+    def start_button_thread(self):
+        thread = threading.Thread(target=self.start_button_function)
+        thread.start()
+
+
+
+
+
+
 
 
 
