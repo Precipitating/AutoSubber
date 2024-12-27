@@ -1,10 +1,13 @@
+import math
 import os
 import customtkinter as ctk
 import moviepy
 from customtkinter import filedialog
-import time
 import uuid
 from faster_whisper import WhisperModel
+from os.path import join
+
+from numba.core.utils import format_time
 from numpy.ma.core import inner
 
 
@@ -69,15 +72,18 @@ class GUI(ctk.CTk):
             self.error_msg.configure(text="Cannot extract audio file. Ensure there's audio.")
             self.start_button.configure(state="normal")
             return
-
         self.progress_bar.step()
 
         # transcribe via Whisper
-        if not self.transcriber.transcribe():
+        transcription_result = self.transcriber.transcribe()
+        if not transcription_result:
             self.error_msg.configure(text="No transcription detected. Aborting.")
             self.start_button.configure(state="normal")
             return
+        self.progress_bar.step()
 
+        # put transcription into an SRT file
+        self.transcriber.generate_subtitles(transcription_result[0], transcription_result[1])
         self.progress_bar.step()
 
         self.start_button.configure(state="normal")
@@ -89,7 +95,10 @@ class Transcriber:
         self.model = WhisperModel("large-v3")
         self.file_name = ""
         self.transcription_result = ""
-        self.output_dir = "output/"
+        self.audio_dir = "audio\\"
+        self.subtitle_dir = "subtitles\\"
+        self.output_dir = "output\\"
+        self.file_path = ""
 
     def extract_audio(self, path):
         clip = None
@@ -98,7 +107,8 @@ class Transcriber:
             clip = moviepy.VideoFileClip(path)
             # convert to mp3 using timestamp as file name
             self.file_name = f"{uuid.uuid4().hex}"
-            clip.audio.write_audiofile(f'{self.output_dir}{self.file_name}.mp3')
+            self.file_path = join(self.audio_dir, f'{self.file_name}.mp3')
+            clip.audio.write_audiofile(self.file_path)
             return True
         except Exception as e:
             return False
@@ -108,22 +118,49 @@ class Transcriber:
 
     # analyze mp3 file and generate transcription & timestamps
     def transcribe(self):
-        segments, info = self.model.transcribe(f'{self.output_dir}{self.file_name}.mp3')
+        segments, info = self.model.transcribe(self.file_path)
         segments = list(segments)
 
-        # if no transcription, no point continuing
+    # if no transcription, no point continuing
         if not segments:
+            print("No transcription found")
             return False
 
+    # debug to see transcription results on console
         for seg in segments:
             print("[%.2fs -> %.2fs] %s" % (seg.start, seg.end, seg.text))
 
+    # returns lang and transcription results
         return info.language, segments
 
 
-   # def apply_caption_to_video:
+    # put subtitles in the SRT file
+    def generate_subtitles(self, language, segments):
+        sub_file = f"{self.subtitle_dir}{self.file_name}-sub.srt"
+        text = ""
 
+        for idx, seg in enumerate(segments):
+            seg_start = format_time(seg.start)
+            seg_end = format_time(seg.end)
 
+            text += f"{str(idx + 1)}\n"
+            text += f"{seg_start} --> {seg_end}\n"
+            text += f"{seg.text}\n\n"
+
+        file = open(sub_file, "w")
+        file.write(text)
+        file.close()
+
+    def format_time(self, seconds):
+        hours = math.floor(seconds / 3600)
+        seconds %= 3600
+        minutes = math.floor(seconds / 60)
+        seconds %= 60
+        milli = round((seconds - math.floor(seconds)) * 1000)
+        seconds = math.floor(seconds)
+
+        formatted = f"{hours :02d}:{minutes:02d}:{seconds:02d}:{milli:02d}"
+        return formatted
 
 
 app = GUI()
