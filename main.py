@@ -1,4 +1,3 @@
-import math
 import os
 import customtkinter as ctk
 import moviepy
@@ -6,9 +5,8 @@ from customtkinter import filedialog
 import uuid
 from faster_whisper import WhisperModel
 from os.path import join
+import pysubs2
 
-from numba.core.utils import format_time
-from numpy.ma.core import inner
 
 
 class GUI(ctk.CTk):
@@ -24,12 +22,12 @@ class GUI(ctk.CTk):
 
         # browse & select video file
         browse_button= ctk.CTkButton(inner_frame, text="Browse video file", command=self.browse_file)
-        browse_button.grid(row=0, column = 0 , padx=10, pady = 10)
+        browse_button.grid(row=0, column= 0 , padx=5, pady= 10)
 
         self.selected_file = ctk.CTkEntry(inner_frame)
         self.selected_file.insert(0,"No file selected")
         self.selected_file.configure(state="disabled")
-        self.selected_file.grid(row=0, column = 1, padx=10)
+        self.selected_file.grid(row=0, column = 1)
 
         # start button
         self.start_button = ctk.CTkButton(inner_frame, text="Start", command=self.start_button_function)
@@ -39,6 +37,10 @@ class GUI(ctk.CTk):
         self.progress_bar = ctk.CTkProgressBar(inner_frame, determinate_speed=10)
         self.progress_bar.set(0)
         self.progress_bar.place(relx = 0.5, rely = 0.9,  anchor="center")
+
+        # clean audio checkbox
+        self.clean_audio_checkbox = ctk.CTkCheckBox(inner_frame, text="Clean audio")
+        self.clean_audio_checkbox.grid(row= 1, column= 0, sticky= "w", padx= 10)
 
         # error messages if transcription fail
         self.error_msg = ctk.CTkLabel(inner_frame, text_color= "red", text="")
@@ -74,16 +76,24 @@ class GUI(ctk.CTk):
             return
         self.progress_bar.step()
 
-        # transcribe via Whisper
-        transcription_result = self.transcriber.transcribe()
+        #transcribe via Whisper
+        if self.clean_audio_checkbox.get() == 1:
+            transcription_result = self.transcriber.transcribe(True)
+        else:
+            transcription_result = self.transcriber.transcribe(False)
+
         if not transcription_result:
             self.error_msg.configure(text="No transcription detected. Aborting.")
             self.start_button.configure(state="normal")
             return
         self.progress_bar.step()
 
-        # put transcription into an SRT file
+        # put transcription into an ass file
         self.transcriber.generate_subtitles(transcription_result[0], transcription_result[1])
+        self.progress_bar.step()
+
+        # generate video with subtitles
+        self.transcriber.subtitle_to_video((os.path.splitext(self.selected_file.get())),self.transcriber.sub_path)
         self.progress_bar.step()
 
         self.start_button.configure(state="normal")
@@ -95,10 +105,11 @@ class Transcriber:
         self.model = WhisperModel("large-v3")
         self.file_name = ""
         self.transcription_result = ""
-        self.audio_dir = "audio\\"
-        self.subtitle_dir = "subtitles\\"
-        self.output_dir = "output\\"
+        self.audio_dir = "audio/"
+        self.subtitle_dir = "subtitles/"
+        self.output_dir = "output/"
         self.file_path = ""
+        self.sub_path = ""
 
     def extract_audio(self, path):
         clip = None
@@ -117,8 +128,12 @@ class Transcriber:
 
 
     # analyze mp3 file and generate transcription & timestamps
-    def transcribe(self):
-        segments, info = self.model.transcribe(self.file_path)
+    def transcribe(self, isolate_vocals):
+        if isolate_vocals:
+            segments, info = self.model.transcribe(self.file_path, vad_filter= True)
+        else:
+            segments, info = self.model.transcribe(self.file_path)
+
         segments = list(segments)
 
     # if no transcription, no point continuing
@@ -134,33 +149,28 @@ class Transcriber:
         return info.language, segments
 
 
-    # put subtitles in the SRT file
+    # put subtitles in the .ass file
     def generate_subtitles(self, language, segments):
-        sub_file = f"{self.subtitle_dir}{self.file_name}-sub.srt"
-        text = ""
+        self.sub_path = join(self.subtitle_dir, f'{self.file_name}-sub.ass')
+        results = []
+        for s in segments:
+            seg_dict = {'start': s.start, 'end': s.end, 'text': s.text}
+            results.append(seg_dict)
 
-        for idx, seg in enumerate(segments):
-            seg_start = format_time(seg.start)
-            seg_end = format_time(seg.end)
+        subs = pysubs2.load_from_whisper(results)
+        subs.save(self.sub_path)
 
-            text += f"{str(idx + 1)}\n"
-            text += f"{seg_start} --> {seg_end}\n"
-            text += f"{seg.text}\n\n"
 
-        file = open(sub_file, "w")
-        file.write(text)
-        file.close()
+    def subtitle_to_video(self, input_video, sub_file):
+        output = join(self.output_dir, f'{self.file_name}{input_video[1]}')
+        os.system(f'ffmpeg -i "{input_video[0] + input_video[1]}" -vf subtitles="{sub_file}" "{output}"')
+        os.remove(self.file_path)
 
-    def format_time(self, seconds):
-        hours = math.floor(seconds / 3600)
-        seconds %= 3600
-        minutes = math.floor(seconds / 60)
-        seconds %= 60
-        milli = round((seconds - math.floor(seconds)) * 1000)
-        seconds = math.floor(seconds)
 
-        formatted = f"{hours :02d}:{minutes:02d}:{seconds:02d}:{milli:02d}"
-        return formatted
+
+
+
+
 
 
 app = GUI()
