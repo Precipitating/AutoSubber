@@ -3,9 +3,8 @@ import customtkinter as ctk
 import moviepy
 from customtkinter import filedialog
 import uuid
-from faster_whisper import WhisperModel
+import stable_whisper
 from os.path import join
-import pysubs2
 import threading
 
 class GUI(ctk.CTk):
@@ -15,7 +14,6 @@ class GUI(ctk.CTk):
         self.geometry("350x400")
         self.title("AutoSubber")
         self.resizable(False, False)
-        self.progress_steps = 4
 
         inner_frame = ctk.CTkFrame(self)
         inner_frame.place(relx = 0.5, rely = 0.5, relwidth = 0.95, relheight=0.95,  anchor="center")
@@ -25,9 +23,8 @@ class GUI(ctk.CTk):
         browse_button.grid(row=0, column= 0 , padx=5, pady= 10)
 
         self.selected_file = ctk.CTkEntry(inner_frame)
-        self.selected_file.insert(0,"No file selected")
         self.selected_file.configure(state="disabled")
-        self.selected_file.grid(row=0, column = 1)
+        self.selected_file.grid(row=0, column = 1 )
 
         # start button
         self.start_button = ctk.CTkButton(inner_frame, text="Start", command=self.start_button_thread)
@@ -40,7 +37,17 @@ class GUI(ctk.CTk):
 
         # clean audio checkbox
         self.clean_audio_checkbox = ctk.CTkCheckBox(inner_frame, text="Clean audio")
-        self.clean_audio_checkbox.grid(row= 1, column= 0, sticky= "w", padx= 10)
+        self.clean_audio_checkbox.grid(row= 1, column= 0, sticky= "w", padx= 10, pady = 2)
+
+        # word level checkbox
+        self.word_timestamp_checkbox = ctk.CTkCheckBox(inner_frame, text="Word timestamp")
+        self.word_timestamp_checkbox.select()
+        self.word_timestamp_checkbox.grid(row= 2, column= 0, sticky= "w", padx= 10, pady = 2)
+
+        # segment level
+        self.segment_timestamp_checkbox = ctk.CTkCheckBox(inner_frame, text="Segment timestamp")
+        self.segment_timestamp_checkbox.select()
+        self.segment_timestamp_checkbox.grid(row= 3, column= 0, sticky= "w", padx= 10, pady = 2)
 
         # error messages if transcription fail
         self.error_msg = ctk.CTkLabel(inner_frame, text_color= "red", text="")
@@ -63,8 +70,14 @@ class GUI(ctk.CTk):
     def start_button_function(self):
         self.progress_bar.set(0)
         self.error_msg.configure(text="")
+
+        # early error returns
         if self.selected_file.get() == "":
             self.error_msg.configure(text="Select a video before starting.")
+            return
+
+        if self.word_timestamp_checkbox.get() == 0 and self. segment_timestamp_checkbox.get() == 0:
+            self.error_msg.configure(text= "Word timestamp or Segment timestamp must be enabled")
             return
 
         # start the process
@@ -78,10 +91,7 @@ class GUI(ctk.CTk):
         self.progress_bar.set(0.25)
 
         #transcribe via Whisper
-        if self.clean_audio_checkbox.get() == 1:
-            transcription_result = self.transcriber.transcribe(True)
-        else:
-            transcription_result = self.transcriber.transcribe(False)
+        transcription_result = self.transcriber.transcribe(isolate=self.clean_audio_checkbox.get())
 
         if not transcription_result:
             self.error_msg.configure(text="No transcription detected. Aborting.")
@@ -90,7 +100,9 @@ class GUI(ctk.CTk):
         self.progress_bar.set(0.5)
 
         # put transcription into an ass file
-        self.transcriber.generate_subtitles(transcription_result[0], transcription_result[1])
+        self.transcriber.generate_subtitles(transcription_result,
+                                            word_timestamp= self.word_timestamp_checkbox.get(),
+                                            seg_timestamp= self.segment_timestamp_checkbox.get())
         self.progress_bar.set(0.75)
 
         # generate video with subtitles
@@ -108,14 +120,9 @@ class GUI(ctk.CTk):
 
 
 
-
-
-
-
-
 class Transcriber:
     def __init__(self):
-        self.model = WhisperModel("large-v3")
+        self.model = stable_whisper.load_faster_whisper('large-v3')
         self.file_name = ""
         self.transcription_result = ""
         self.audio_dir = "audio/"
@@ -137,41 +144,36 @@ class Transcriber:
         except Exception as e:
             return False
         finally:
-            clip.close()
+            if clip is not None:
+                clip.close()
 
 
     # analyze mp3 file and generate transcription & timestamps
-    def transcribe(self, isolate_vocals):
-        if isolate_vocals:
-            segments, info = self.model.transcribe(self.file_path, vad_filter= True)
-        else:
-            segments, info = self.model.transcribe(self.file_path)
-
-        segments = list(segments)
+    def transcribe(self, **kwargs):
+        result = self.model.transcribe_stable(self.file_path,
+                                              vad= True if kwargs.get("isolate") == 1 else False,
+                                              denoiser="demucs" if kwargs.get("isolate") == 1 else None
+                                              )
 
     # if no transcription, no point continuing
-        if not segments:
+        if not result.has_words:
             print("No transcription found")
             return False
 
     # debug to see transcription results on console
-        for seg in segments:
+        for seg in result.segments:
             print("[%.2fs -> %.2fs] %s" % (seg.start, seg.end, seg.text))
 
-    # returns lang and transcription results
-        return info.language, segments
+        return result
 
 
     # put subtitles in the .ass file
-    def generate_subtitles(self, language, segments):
+    def generate_subtitles(self, result, **kwargs):
         self.sub_path = join(self.subtitle_dir, f'{self.file_name}-sub.ass')
-        results = []
-        for s in segments:
-            seg_dict = {'start': s.start, 'end': s.end, 'text': s.text}
-            results.append(seg_dict)
+        result.to_ass(self.sub_path,
+                      word_level = True if kwargs.get("word_timestamp", 0) == 1 else False,
+                      segment_level = True if kwargs.get("seg_timestamp", 0) == 1 else False)
 
-        subs = pysubs2.load_from_whisper(results)
-        subs.save(self.sub_path)
 
 
     def subtitle_to_video(self, input_video, sub_file):
