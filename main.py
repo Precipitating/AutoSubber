@@ -45,17 +45,21 @@ class GUI(ctk.CTk):
         self.segment_timestamp_checkbox.select()
         self.segment_timestamp_checkbox.grid(row= 3, column= 0, sticky= "w", padx= 10, pady = 2)
 
+        # karaoke highlighting checkbox
+        self.karaoke_checkbox = ctk.CTkCheckBox(inner_frame, text="Karaoke highlighting")
+        self.karaoke_checkbox.grid(row= 4, column= 0, sticky= "w", padx= 10, pady = 5)
+
         # max words per line
         self.max_words_label = ctk.CTkLabel(inner_frame, text= "Max words per segment \n (0 = automatic)", padx = 10)
-        self.max_words_label.grid(row= 4, column = 0)
+        self.max_words_label.grid(row= 5, column = 0)
 
         slider_val = ctk.IntVar()
         self.max_words_per_seg_slider = ctk.CTkSlider(inner_frame, from_= 0, to = 20, width= 150,
                                                        variable= slider_val)
-        self.max_words_per_seg_slider.grid(row= 5, column= 0, sticky= "w", padx= 10)
+        self.max_words_per_seg_slider.grid(row= 6, column= 0, sticky= "w", padx= 10)
         # display slider val
         self.max_word_slider_val = ctk.CTkLabel(inner_frame, textvariable= slider_val)
-        self.max_word_slider_val.grid(row=5,column=1, sticky='w')
+        self.max_word_slider_val.grid(row=6,column=1, sticky='w')
 
         # error messages if transcriptions fail
         self.error_msg = ctk.CTkLabel(inner_frame, text_color= "red", text="")
@@ -76,7 +80,6 @@ class GUI(ctk.CTk):
 
     def browse_file(self):
         file_path = filedialog.askopenfilename(
-            initialdir=os.getcwd(),
             title="Select a video file (mp4, mkv, avi)",
             filetypes=[("Video Files", "*.mp4;*.mkv;*.avi;*.mov;*.webm")]
         )
@@ -123,7 +126,8 @@ class GUI(ctk.CTk):
         # put transcription into an ass file
         self.transcriber.generate_subtitles(transcription_result,
                                             word_timestamp= self.word_timestamp_checkbox.get(),
-                                            seg_timestamp= self.segment_timestamp_checkbox.get())
+                                            seg_timestamp= self.segment_timestamp_checkbox.get(),
+                                            karaoke_option= self.karaoke_checkbox.get())
         self.progress_bar.set(0.75)
 
         # generate video with subtitles
@@ -198,10 +202,12 @@ class Transcriber:
         self.sub_path = join(self.subtitle_dir, f'{self.file_name}-sub.ass')
         result.to_ass(self.sub_path,
                       word_level = True if kwargs.get("word_timestamp", 0) == 1 else False,
-                      segment_level = True if kwargs.get("seg_timestamp", 0) == 1 else False)
+                      segment_level = True if kwargs.get("seg_timestamp", 0) == 1 else False,
+                      karaoke = True if kwargs.get('karaoke_option', 0) == 1 else False)
 
 
 
+    # combine subtitles to video and save to output/
     def subtitle_to_video(self, input_video, sub_file):
         output = join(self.output_dir, f'{self.file_name}{input_video[1]}')
         os.system(f'ffmpeg -i "{input_video[0] + input_video[1]}" -vf subtitles="{sub_file}" "{output}"')
