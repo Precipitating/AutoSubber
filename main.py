@@ -6,6 +6,9 @@ import uuid
 import stable_whisper
 from os.path import join
 import threading
+import tkinter.font
+from CTkScrollableDropdown import *
+
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -20,7 +23,7 @@ class GUI(ctk.CTk):
 
         # browse & select video file
         browse_button= ctk.CTkButton(inner_frame, text="Browse video file", command=self.browse_file)
-        browse_button.grid(row=0, column= 0 , padx=10, pady= 10, sticky="w",)
+        browse_button.grid(row=0, column= 0 , padx=10, pady= 20, sticky="w",)
 
         self.selected_file = ctk.CTkEntry(inner_frame, width = 150)
         self.selected_file.configure(state="disabled")
@@ -50,7 +53,7 @@ class GUI(ctk.CTk):
         self.karaoke_checkbox.grid(row= 4, column= 0, sticky= "w", padx= 10, pady = 5)
 
         # max words per line
-        self.max_words_label = ctk.CTkLabel(inner_frame, text= "Max words per segment \n (0 = automatic)", padx = 10)
+        self.max_words_label = ctk.CTkLabel(inner_frame, text= "Max words per segment \n (0 = automatic)", padx = 10, pady= 5)
         self.max_words_label.grid(row= 5, column = 0)
 
         slider_val = ctk.IntVar()
@@ -59,7 +62,28 @@ class GUI(ctk.CTk):
         self.max_words_per_seg_slider.grid(row= 6, column= 0, sticky= "w", padx= 10)
         # display slider val
         self.max_word_slider_val = ctk.CTkLabel(inner_frame, textvariable= slider_val)
-        self.max_word_slider_val.grid(row=6,column=1, sticky='w')
+        self.max_word_slider_val.grid(row=7,column=0, padx = 20)
+
+        # font list
+        self.font_label = ctk.CTkLabel(inner_frame, text_color="white", text="Font & size:")
+        self.font_label.place(relx=0.6, rely=0.13)
+
+        self.font_option_var = ctk.StringVar(value="Arial")
+        self.font_option_menu = ctk.CTkOptionMenu(inner_frame, variable= self.font_option_var, dynamic_resizing= False)
+        self.font_option_menu.grid(row=1, column = 1, sticky = 'w', pady = 2)
+        font_list = list(tkinter.font.families())
+        font_list.sort()
+        CTkScrollableDropdown(self.font_option_menu, values=font_list, width= 240)
+
+        # font size
+        self.font_size_val = ctk.IntVar()
+        self.font_size_val.set(48)
+        self.font_size_slider = ctk.CTkSlider(inner_frame, from_=2, to=80, width=150,
+                                                      variable=self.font_size_val)
+        self.font_size_slider.grid(row=2, column=1)
+        self.font_size_label = ctk.CTkLabel(inner_frame, textvariable=self.font_size_val)
+        self.font_size_label.place(relx=0.7, rely=0.31)
+
 
         # error messages if transcriptions fail
         self.error_msg = ctk.CTkLabel(inner_frame, text_color= "red", text="")
@@ -127,7 +151,9 @@ class GUI(ctk.CTk):
         self.transcriber.generate_subtitles(transcription_result,
                                             word_timestamp= self.word_timestamp_checkbox.get(),
                                             seg_timestamp= self.segment_timestamp_checkbox.get(),
-                                            karaoke_option= self.karaoke_checkbox.get())
+                                            karaoke_option= self.karaoke_checkbox.get(),
+                                            font = self.font_option_var.get(),
+                                            font_size = self.font_size_val.get())
         self.progress_bar.set(0.75)
 
         # generate video with subtitles
@@ -201,9 +227,11 @@ class Transcriber:
     def generate_subtitles(self, result, **kwargs):
         self.sub_path = join(self.subtitle_dir, f'{self.file_name}-sub.ass')
         result.to_ass(self.sub_path,
-                      word_level = True if kwargs.get("word_timestamp", 0) == 1 else False,
-                      segment_level = True if kwargs.get("seg_timestamp", 0) == 1 else False,
-                      karaoke = True if kwargs.get('karaoke_option', 0) == 1 else False)
+                      word_level = True if kwargs.get('word_timestamp', 0) == 1 else False,
+                      segment_level = True if kwargs.get('seg_timestamp', 0) == 1 else False,
+                      karaoke = True if kwargs.get('karaoke_option', 0) == 1 else False,
+                      font_size = kwargs.get('font_size'),
+                      font = kwargs.get('font'))
 
 
 
