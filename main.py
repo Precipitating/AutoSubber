@@ -200,7 +200,10 @@ class GUI(ctk.CTk):
 
 class Transcriber:
     def __init__(self):
-        self.model = stable_whisper.load_faster_whisper('large-v3')
+        with open("model.txt", 'r') as f:
+            model = f.readline().strip()
+            self.model = stable_whisper.load_faster_whisper(model)
+
         self.file_name = ""
         self.transcription_result = ""
         self.audio_dir = "audio/"
@@ -227,11 +230,11 @@ class Transcriber:
 
     # analyze mp3 file and generate transcription & timestamps
     def transcribe(self, **kwargs):
-        result = self.model.transcribe_stable(self.file_path,
-                                              vad=True if kwargs.get("isolate") == 1 else False,
-                                              denoiser="demucs" if kwargs.get("isolate") == 1 else None,
-                                              regroup=False if kwargs.get('max_words') != 0 else True
-                                              )
+        result = self.model.transcribe(self.file_path,
+                                       vad=True if kwargs.get("isolate") == 1 else False,
+                                       denoiser="demucs" if kwargs.get("isolate") == 1 else None,
+                                       regroup=False if kwargs.get('max_words') != 0 else True
+                                       )
         if kwargs.get('max_words', 0) != 0:
             result.split_by_length(max_words=kwargs.get('max_words'))
 
