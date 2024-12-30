@@ -1,4 +1,4 @@
-base
+large-v3
 
 options available:
 {'tiny', 'tiny.en', 'base', 'base.en', 'small', 'small.en', 'medium', 'medium.en', 'large-v1',
