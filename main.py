@@ -237,7 +237,8 @@ class Transcriber:
         result = self.model.transcribe(self.file_path,
                                        vad=True if kwargs.get("isolate") == 1 else False,
                                        denoiser="demucs" if kwargs.get("isolate") == 1 else None,
-                                       regroup=False if kwargs.get('max_words') != 0 else True
+                                       regroup=False if kwargs.get('max_words') != 0 else True,
+                                       task="translate"
                                        )
         if kwargs.get('max_words', 0) != 0:
             result.split_by_length(max_words=kwargs.get('max_words'))
