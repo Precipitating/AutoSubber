@@ -1,7 +1,7 @@
 # AutoSubber
 ![image](https://github.com/user-attachments/assets/f4082bc6-728d-4be9-b62e-1c9d6ee74b1b)\
 A simple program designed to make auto-subbing videos easy.\
-It uses customtkiner for the GUI and stable-ts for the auto captioning.
+It uses customtkinter for the GUI and stable-ts for the auto captioning.
 # How to use:
 Simply type the model to use in models.txt and open the exe.\
 It will take a while to load, as it's downloading the model in your system if you don't have it.\
