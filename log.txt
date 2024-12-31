@@ -1,0 +1,29 @@
+MoviePy - Writing audio in audio/b910897db41742a1beab14e5c3b2ef62.mp3
+chunk:   0%|          | 0/198 [00:00<?, ?it/s, now=None]chunk:  71%|#######1  | 141/198 [00:00<00:00, 1402.24it/s, now=None]                                                                    MoviePy - Done.
+Detected Language: english
+Transcribing with faster-whisper (large-v3)...Transcribe:   0%|          | 0/8.96 [00:00<?, ?sec/s]Transcribe:  98%|#########8| 8.8/8.96 [00:00<00:00, 18.65sec/s]Transcribe: 100%|##########| 8.96/8.96 [00:00<00:00, 18.96sec/s]
+Adjustment:   0%|          | 0/8.8 [00:00<?, ?sec/s]Adjustment: 100%|##########| 8.8/8.8 [00:00<?, ?sec/s]
+[5.50s -> 7.02s]  literally you're like 18 and you play
+[7.18s -> 8.80s]  roblox you need to get a life and a job
+Saved: C:\Users\duder\Desktop\AutoSubber\subtitles\b910897db41742a1beab14e5c3b2ef62-sub.ass
+done
+MoviePy - Writing audio in audio/9c81af05673541609216f431fc2e8a48.mp3
+chunk:   0%|          | 0/198 [00:00<?, ?it/s, now=None]chunk:  67%|######7   | 133/198 [00:00<00:00, 1329.58it/s, now=None]                                                                    MoviePy - Done.
+Detected Language: english
+Transcribing with faster-whisper (large-v3)...Transcribe:   0%|          | 0/8.96 [00:00<?, ?sec/s]Transcribe:  98%|#########8| 8.8/8.96 [00:00<00:00, 18.91sec/s]Transcribe: 100%|##########| 8.96/8.96 [00:00<00:00, 19.25sec/s]
+Adjustment:   0%|          | 0/8.8 [00:00<?, ?sec/s]Adjustment: 100%|##########| 8.8/8.8 [00:00<?, ?sec/s]
+[5.50s -> 7.02s]  literally you're like 18 and you play
+[7.18s -> 8.80s]  roblox you need to get a life and a job
+Saved: C:\Users\duder\Desktop\AutoSubber\subtitles\9c81af05673541609216f431fc2e8a48-sub.ass
+done
+Traceback (most recent call last):
+  File "C:\Users\duder\Desktop\AutoSubber\main.py", line 280, in <module>
+    app.mainloop()
+  File "C:\Users\duder\Desktop\AutoSubber\.venv\Lib\site-packages\customtkinter\windows\ctk_tk.py", line 165, in mainloop
+    super().mainloop(*args, **kwargs)
+  File "C:\Users\duder\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 1505, in mainloop
+    self.tk.mainloop(n)
+  File "C:\Users\duder\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 1963, in __call__
+    def __call__(self, *args):
+
+KeyboardInterrupt

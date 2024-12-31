@@ -8,7 +8,11 @@ from os.path import join
 import threading
 import tkinter.font, tkinter.colorchooser
 from CTkScrollableDropdown import *
+import sys
 
+output = open("log.txt", "wt")
+sys.stdout = output
+sys.stderr = output
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -267,6 +271,7 @@ class Transcriber:
         output = join(self.output_dir, f'{self.file_name}{input_video[1]}')
         os.system(f'ffmpeg -i "{input_video[0] + input_video[1]}" -vf subtitles="{sub_file}" "{output}"')
         os.remove(self.file_path)
+        os.remove(self.sub_path)
 
 
 
