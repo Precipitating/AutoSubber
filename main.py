@@ -236,7 +236,6 @@ class Transcriber:
     def transcribe(self, **kwargs):
         result = self.model.transcribe(self.file_path,
                                        vad=True if kwargs.get("isolate") == 1 else False,
-                                       denoiser="demucs" if kwargs.get("isolate") == 1 else None,
                                        regroup=False if kwargs.get('max_words') != 0 else True,
                                        task="translate"
                                        )
