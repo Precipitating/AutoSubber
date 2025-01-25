@@ -10,9 +10,6 @@ import tkinter.font, tkinter.colorchooser
 from CTkScrollableDropdown import *
 import sys
 
-output = open("log.txt", "wt")
-sys.stdout = output
-sys.stderr = output
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -275,6 +272,8 @@ class Transcriber:
 
 
 
-
-app = GUI()
-app.mainloop()
+with open("log.txt", "wt", encoding="utf-8") as output:
+    sys.stdout = output
+    sys.stderr = output
+    app = GUI()
+    app.mainloop()
